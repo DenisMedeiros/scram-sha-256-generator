@@ -2,6 +2,8 @@
 
 This projects implements the process to generate a SCRAM-SHA-256 Hash as a regular HTML page using Javascript - as simple as possible to be run or hosted. All the code is contained in a single HTML page ([index.html](./html)) and you can run it directly from your browser.
 
+If you just want to use it, it's hosted on: https://denismedeiros.github.io/scram-sha-256-generator/
+
 ## Implementation
 
 This code is inspired in the original implementation in the PostgreSQL project and in other implementations made by the community (please see references).
