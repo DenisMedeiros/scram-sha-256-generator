@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+
+<head>
+    <html lang="en">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="SCRAM-256-Generator">
+    <meta name="author" content="Denis Medeiros">
+    <title>SCRAM-SHA256-Generator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css"
+        integrity="sha512-SbiR/eusphKoMVVXysTKG/7VseWii+Y3FdHrt0EpKgpToZeemhqHeZeLWLhJutz/2ut2Vw1uQEj2MbRF+TVBUA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body class="d-flex h-100 text-center text-bg-dark">
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+        <main class="px-3">
+            <h1>SCRAM-SHA256-Generator</h1>
+            <p class="lead">This page generates SCRAM-SHA256 hash (useful for PostgreSQL or MongoDB passwords).</p>
+            <p>For more details about the implementation, check the <a
+                    href="https://github.com/DenisMedeiros/scram-sha-256-generator">source code in Github</a>.</p>
+        </main>
+        <section class="vh-100 gradient-custom">
+            <div class="container py-5 h-200">
+                <div class="row d-flex justify-content-center align-items-center h-200">
+                    <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+                        <div class="card bg-dark text-white" style="border-radius: 1rem;">
+                            <div class="card-body p-5 text-center">
+                                <div class="mb-md-5 mt-md-4 pb-5">
+                                    <p class="text-white-50 mb-5">Type the password below and the hash will be automatically generated below.</p>
+                                    <div class="form-outline form-white mb-4">
+                                        <label class="form-label" for="password">Password</label>
+                                        <input type="password" id="password" class="form-control form-control-lg"
+                                            onkeyup="createPasswordHash(this.value)" />
+                                    </div>
+                                    <div class="form-outline form-white mb-4">
+                                        <label class="form-label" for="result">Generated Hash</label>
+                                        <textarea class="form-control" id="result" rows="4" readonly="yes"></textarea>
+                                    </div>
+                                    <div class="form-outline form-white mb-4">
+                                        <button id="copyButton" class="btn btn-primary w-100" onclick="copyResultToClipboard()" disabled="true">
+                                            Copy to Clipboard
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        /**
+        * Generates a SCRAM-SHA256 hash.
+        *
+        * @param  {string} password The password to be hashed.
+        * @return {string} The hashed password.
+        */
+        function generateScramSha256Hash(password) {
+            // Constant values - per references.
+            const saltSizeBytes = 16;
+            const keySizeBytes = 32;
+            const numIterations = 4096;
+
+            // Define client and server keys.
+            const initialClientKey = CryptoJS.enc.Utf8.parse("Client Key");
+            const initialServerKey = CryptoJS.enc.Utf8.parse("Server Key");
+
+            // Generate salt.
+            var salt = CryptoJS.lib.WordArray.random(saltSizeBytes);
+
+            // Convert the password to an array of bytes.
+            const passwordBytes = CryptoJS.enc.Utf8.parse(password);
+
+            // Generate digest key.
+            const digestKey = CryptoJS.PBKDF2(passwordBytes, salt, {
+                keySize: (keySizeBytes * 8) / 32,  // Per documentation.
+                hasher: CryptoJS.algo.SHA256,
+                iterations: numIterations
+            });
+
+            // Generate client key.
+            const clientKey = CryptoJS.HmacSHA256(initialClientKey, digestKey);
+            // Generate the intermediate key.
+            const intermediateKey = CryptoJS.SHA256(clientKey);
+            // Generate server key.
+            const serverKey = CryptoJS.HmacSHA256(initialServerKey, digestKey);
+
+            // Convert all keys to base64 and build formatted result.
+            const saltB64 = salt.toString(CryptoJS.enc.Base64);
+            const intermediateKeyB64 = intermediateKey.toString(CryptoJS.enc.Base64);
+            const serverKeyB64 = serverKey.toString(CryptoJS.enc.Base64);
+
+            // Build the SCRAM-SHA256 hash.
+            return `SCRAM-SHA-256$${numIterations}:${saltB64}$${intermediateKeyB64}:${serverKeyB64}`;
+        }
+
+
+        /**
+        * Captures the given password and create its SCRAM-SHA256 hash.
+        * @param  {string} password The password to be hashed.
+        */
+        function createPasswordHash(password) {
+            const copyButton = document.getElementById("copyButton");
+            const resultTextArea = document.getElementById("result");
+            // Ignore if the password is in blank.
+            if (password.trim().length === 0) {
+                const resultTextArea = document.getElementById("result");
+                resultTextArea.value = "";
+                copyButton.disabled = true;
+                return
+            }
+            copyButton.disabled = false;
+            const hashedPassword = generateScramSha256Hash(password);
+            resultTextArea.value = hashedPassword;
+        }
+
+        /**
+        * Copies the result to the clipboard.
+        */
+        function copyResultToClipboard() {
+            const copyButton = document.getElementById("copyButton");
+            const resultTextArea = document.getElementById("result");
+            // Select the text field.
+            resultTextArea.select();
+            // For mobile devices.
+            resultTextArea.setSelectionRange(0, 99999);
+            // Copy the text inside the text field.
+            navigator.clipboard.writeText(resultTextArea.value);
+        }
+    </script>
+</body>
+
+</html>
